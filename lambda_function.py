@@ -15,6 +15,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions 
 
 
+
 DB_CONF = {
     'host': os.environ['db_host'],
     'name': os.environ['db_name'],
@@ -54,39 +55,33 @@ class ReturnPrimeData(BaseModel):
     customer_address = CharField()
     customer_email = CharField(null=True)
     customer_phone = CharField()
-    requested_at = DateTimeField()
     order_number = CharField()
-    order_created_at = DateTimeField()
-    approved_at = DateTimeField(null=True)
-    received_at = DateTimeField(null=True)
-    inspected_at = DateTimeField(null=True)
-    archived_at = DateTimeField(null=True)
-    inspection_due_by = DateTimeField(null=True)
     exchange_with = CharField(null=True)
-    exchange_with_sku = IntegerField(null=True)
+    exchange_with_sku = CharField(null=True)
     exchange_with_amount = DecimalField(null=True)
     difference_amount = DecimalField(null=True)
     exchange_order_name = CharField(null=True)
     additional_amount_captured = DecimalField(null=True)
     payment_gateway_name = CharField(null=True)
     payment_gateway_transaction_id = CharField(null=True)
-    payment_transaction_date = DateTimeField(null=True)
-    order_payment_gateway = DateTimeField(null=True)
+    order_payment_gateway = CharField(null=True)
     item_name = CharField()
     item_quantity = IntegerField()
     item_price = DecimalField(null=True)
     sku = CharField(null=True)
     reason = CharField(null=True)
+    requested_at= DateTimeField()
+    order_created_at = DateTimeField()
+    approved_at= DateTimeField(null=True)
+    received_at = CharField(null=True)
     customer_comment = TextField(null=True)
     pickup_awb = CharField(null=True)
     pickup_logistics = CharField(null=True)
     warehouse_location = CharField() 
-    exchanged_at = DateTimeField(null=True)
     exchange_order_status = CharField(null=True)
     refund_status = CharField(null=True)
     requested_refund_mode = CharField(null=True)
     actual_refund_mode = CharField(null=True)
-    refunded_at = DateTimeField(null=True)
     return_fee = DecimalField(null=True)
     eligible_refund_amount = DecimalField(null=True)
     refunded_amount = DecimalField(null=True)
@@ -99,8 +94,15 @@ class ReturnPrimeData(BaseModel):
     original_return_method = CharField(null=True)
     actual_return_method = CharField(null=True)
     custom_attributes = CharField(null=True)
+    inspected_at= CharField(null=True)
+    archived_at= DateTimeField(null=True)
+    payment_transaction_date = CharField(null=True)
+    inspection_due_by = CharField(null=True)
+    exchanged_at = DateTimeField(null=True)
+    refunded_at = DateTimeField(null=True)
 
-    
+
+
 def lambda_handler(event, context):
     print("Started at:", datetime.datetime.now())
     download_path = tempfile.gettempdir()
@@ -209,14 +211,13 @@ def lambda_handler(event, context):
         seconds = 1
         comeout = True
         while comeout:
-            if os.path.isdir(os.path.join(download_path, "report")):
+            if os.path.isdir(os.path.join(download_path, "report.csv")):
                 print("file is checked downloaded")
-
                 break
             else:
                 time.sleep(1)
                 seconds = seconds + 1
-                if seconds > 150:
+                if seconds > 120:
                     comeout = False
         print("File is download")
         
@@ -224,20 +225,71 @@ def lambda_handler(event, context):
         print("driver is closed")
 
         csv_file = os.path.join(download_path, "report.csv")
-        
-
         with open(csv_file, "r", encoding="utf-8-sig") as file:
             csv_reader = csv.DictReader(file)
             print("Reading the data")
             return_data=[]
             for row in csv_reader:
+                requested_at = row["requested_at"]
+                if requested_at:
+                    requested_at=datetime.datetime.strptime(requested_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                    requested_datetime=requested_at.replace(tzinfo=None)
+                    row["requested_at"]=requested_datetime
+                else:
+                    row["requested_at"]=None
+
+                order_created_at = row["order_created_at"]
+                if(order_created_at!=""):
+                    order_created_at=datetime.datetime.strptime(order_created_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    order_created_at_datetime=order_created_at.replace(tzinfo=None)
+                    row["order_created_at"]=order_created_at_datetime
+                else:
+                    row["order_created_at"]=None
+
+                approved_at = row["approved_at"]
+                if(approved_at!=""):
+                    approved_at=datetime.datetime.strptime(approved_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                    approved_at_datetime=approved_at.replace(tzinfo=None)
+                    row["approved_at"]=approved_at_datetime
+                else:
+                    row["approved_at"]=None
+
+                archived_at=row["archived_at"]
+                if archived_at!="":
+                    archived_at=datetime.datetime.strptime(archived_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                    archived_at_datetime=archived_at.replace(tzinfo=None)
+                    row["archived_at"]=archived_at_datetime
+                else:
+                    row["archived_at"]=None 
+
+                exchanged_at = row["exchanged_at"] 
+                if(exchanged_at!="") :
+                    exchanged_at=datetime.datetime.strptime(exchanged_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                    exchanged_at_datetime=exchanged_at.replace(tzinfo=None)
+                    row["exchanged_at"]=exchanged_at_datetime
+                else:
+                    row["exchanged_at"] =None    
+
+                refunded_at = row["refunded_at"]
+                if(refunded_at!=""):
+                    refunded_at=datetime.datetime.strptime(refunded_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                    refunded_at_datetime=refunded_at.replace(tzinfo=None)
+                    row["refunded_at"]=refunded_at_datetime
+                else:
+                    row["refunded_at"]=None    
+
                 row["brand"]=brand.id
                 return_data.append(row)
+                
                
     
-        
-        ReturnPrimeData.insert_many(return_data).execute()
+            
+            ReturnPrimeData.insert_many(return_data).execute()
         print("program is completed and Data has been pushed to database")
         print("Ended at:", datetime.datetime.now())
-       
+           
+
+
+
+
 
