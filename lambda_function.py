@@ -5,7 +5,7 @@ import time
 import csv
 
 
-from peewee import  PostgresqlDatabase, Model, CharField, ForeignKeyField, DateTimeField,TextField, DecimalField, IntegerField
+from peewee import  PostgresqlDatabase, Model, CharField, ForeignKeyField, DateTimeField,TextField, DecimalField, IntegerField , DataError
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -70,9 +70,12 @@ class ReturnPrimeData(BaseModel):
     item_price = DecimalField(null=True)
     sku = CharField(null=True)
     reason = CharField(null=True)
-    requested_at= DateTimeField()
-    order_created_at = DateTimeField()
+    requested_at= DateTimeField(null=True)
+    requested_at_str= CharField(null=True)
+    order_created_at = DateTimeField(null=True)
+    order_created_at_str = CharField(null=True)
     approved_at= DateTimeField(null=True)
+    approved_at_str= CharField(null=True)
     received_at = CharField(null=True)
     customer_comment = TextField(null=True)
     pickup_awb = CharField(null=True)
@@ -96,10 +99,13 @@ class ReturnPrimeData(BaseModel):
     custom_attributes = CharField(null=True)
     inspected_at= CharField(null=True)
     archived_at= DateTimeField(null=True)
+    archived_at_str= CharField(null=True)
     payment_transaction_date = CharField(null=True)
     inspection_due_by = CharField(null=True)
     exchanged_at = DateTimeField(null=True)
+    exchanged_at_str = CharField(null=True)
     refunded_at = DateTimeField(null=True)
+    refunded_at_str = CharField(null=True)
 
 
 
@@ -231,59 +237,75 @@ def lambda_handler(event, context):
             return_data=[]
             for row in csv_reader:
                 requested_at = row["requested_at"]
-                if requested_at:
-                    requested_at=datetime.datetime.strptime(requested_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                    requested_datetime=requested_at.replace(tzinfo=None)
-                    row["requested_at"]=requested_datetime
-                else:
-                    row["requested_at"]=None
+                try:
+                    if requested_at:
+                        requested_at=datetime.datetime.strptime(requested_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        requested_datetime=requested_at.replace(tzinfo=None)
+                        row["requested_at"]=requested_datetime
+                    else:
+                        row["requested_at"]=None
+                except (ValueError,DataError) as e:
+                    row["requested_at_str"]=requested_at     
 
                 order_created_at = row["order_created_at"]
-                if(order_created_at!=""):
-                    order_created_at=datetime.datetime.strptime(order_created_at, "%Y-%m-%dT%H:%M:%S.%fZ")
-                    order_created_at_datetime=order_created_at.replace(tzinfo=None)
-                    row["order_created_at"]=order_created_at_datetime
-                else:
-                    row["order_created_at"]=None
+                try:
+                    if(order_created_at!=""):
+                        order_created_at=datetime.datetime.strptime(order_created_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                        order_created_at_datetime=order_created_at.replace(tzinfo=None)
+                        row["order_created_at"]=order_created_at_datetime
+                    else:
+                        row["order_created_at"]=None
+                except (ValueError,DataError) as e:
+                    row["order_created_at_str"]=order_created_at
 
                 approved_at = row["approved_at"]
-                if(approved_at!=""):
-                    approved_at=datetime.datetime.strptime(approved_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                    approved_at_datetime=approved_at.replace(tzinfo=None)
-                    row["approved_at"]=approved_at_datetime
-                else:
-                    row["approved_at"]=None
+                try:
+                    if(approved_at!=""):
+                        approved_at=datetime.datetime.strptime(approved_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        approved_at_datetime=approved_at.replace(tzinfo=None)
+                        row["approved_at"]=approved_at_datetime
+                    else:
+                        row["approved_at"]=None
+                except (ValueError,DataError) as e:
+                    row["approved_at_str"]=approved_at        
 
                 archived_at=row["archived_at"]
-                if archived_at!="":
-                    archived_at=datetime.datetime.strptime(archived_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                    archived_at_datetime=archived_at.replace(tzinfo=None)
-                    row["archived_at"]=archived_at_datetime
-                else:
-                    row["archived_at"]=None 
+                try:
+                    if archived_at!="":
+                        archived_at=datetime.datetime.strptime(archived_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        archived_at_datetime=archived_at.replace(tzinfo=None)
+                        row["archived_at"]=archived_at_datetime
+                    else:
+                        row["archived_at"]=None 
+                except (ValueError,DataError) as e:
+                    row["archived_at_str"]=archived_at
 
                 exchanged_at = row["exchanged_at"] 
-                if(exchanged_at!="") :
-                    exchanged_at=datetime.datetime.strptime(exchanged_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                    exchanged_at_datetime=exchanged_at.replace(tzinfo=None)
-                    row["exchanged_at"]=exchanged_at_datetime
-                else:
-                    row["exchanged_at"] =None    
+                try:
+                    if(exchanged_at!="") :
+                        exchanged_at=datetime.datetime.strptime(exchanged_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        exchanged_at_datetime=exchanged_at.replace(tzinfo=None)
+                        row["exchanged_at"]=exchanged_at_datetime
+                    else:
+                        row["exchanged_at"] =None    
+                except (ValueError,DataError) as e:
+                    row["exchanged_at_str"]=exchanged_at
 
                 refunded_at = row["refunded_at"]
-                if(refunded_at!=""):
-                    refunded_at=datetime.datetime.strptime(refunded_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                    refunded_at_datetime=refunded_at.replace(tzinfo=None)
-                    row["refunded_at"]=refunded_at_datetime
-                else:
-                    row["refunded_at"]=None    
+                try:
+                    if(refunded_at!=""):
+                        refunded_at=datetime.datetime.strptime(refunded_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        refunded_at_datetime=refunded_at.replace(tzinfo=None)
+                        row["refunded_at"]=refunded_at_datetime
+                    else:
+                        row["refunded_at"]=None    
+                except (ValueError,DataError) as e:
+                    row["refunded_at_str"]=refunded_at
 
                 row["brand"]=brand.id
                 return_data.append(row)
                 
                
-    
-            
             ReturnPrimeData.insert_many(return_data).execute()
         print("program is completed and Data has been pushed to database")
         print("Ended at:", datetime.datetime.now())
