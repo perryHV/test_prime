@@ -245,7 +245,7 @@ def lambda_handler(event, context):
                     else:
                         row["requested_at"]=None
                 except (ValueError,DataError) as e:
-                    row["requested_at_str"]=requested_at     
+                    row["requested_at_str"]=row["requested_at"]  
 
                 order_created_at = row["order_created_at"]
                 try:
@@ -256,7 +256,7 @@ def lambda_handler(event, context):
                     else:
                         row["order_created_at"]=None
                 except (ValueError,DataError) as e:
-                    row["order_created_at_str"]=order_created_at
+                    row["order_created_at_str"]=row["order_created_at"]
 
                 approved_at = row["approved_at"]
                 try:
@@ -267,7 +267,7 @@ def lambda_handler(event, context):
                     else:
                         row["approved_at"]=None
                 except (ValueError,DataError) as e:
-                    row["approved_at_str"]=approved_at        
+                    row["approved_at_str"]=row["approved_at"]        
 
                 archived_at=row["archived_at"]
                 try:
@@ -278,7 +278,7 @@ def lambda_handler(event, context):
                     else:
                         row["archived_at"]=None 
                 except (ValueError,DataError) as e:
-                    row["archived_at_str"]=archived_at
+                    row["archived_at_str"]=row["archived_at"]
 
                 exchanged_at = row["exchanged_at"] 
                 try:
@@ -289,7 +289,7 @@ def lambda_handler(event, context):
                     else:
                         row["exchanged_at"] =None    
                 except (ValueError,DataError) as e:
-                    row["exchanged_at_str"]=exchanged_at
+                    row["exchanged_at_str"]=row["exchanged_at"]
 
                 refunded_at = row["refunded_at"]
                 try:
@@ -300,7 +300,7 @@ def lambda_handler(event, context):
                     else:
                         row["refunded_at"]=None    
                 except (ValueError,DataError) as e:
-                    row["refunded_at_str"]=refunded_at
+                    row["refunded_at_str"]=row["refunded_at"]
 
                 row["brand"]=brand.id
                 return_data.append(row)
