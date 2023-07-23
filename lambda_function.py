@@ -217,7 +217,7 @@ def lambda_handler(event, context):
         seconds = 1
         comeout = True
         while comeout:
-            if os.path.isdir(os.path.join(download_path, "report.csv")):
+            if os.path.isdir(os.path.join(download_path, "report")):
                 print("file is checked downloaded")
                 break
             else:
@@ -230,7 +230,7 @@ def lambda_handler(event, context):
         driver.quit()
         print("driver is closed")
 
-        csv_file = os.path.join(download_path, "report.csv")
+        csv_file = os.path.join(download_path, "report")
         with open(csv_file, "r", encoding="utf-8-sig") as file:
             csv_reader = csv.DictReader(file)
             print("Reading the data")
