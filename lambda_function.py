@@ -37,7 +37,7 @@ class BaseModel(Model):
     class Meta:
         database=pg_database
     
-
+# Defined table schema 
 class ReturnPrimeBrand(BaseModel):
     brand_name = CharField(null=False)
     url = CharField()
@@ -130,7 +130,8 @@ def lambda_handler(event, context):
         chrome_preferences = {"download.default_directory": download_path}
         chrome_options.add_experimental_option("detach", True)
         chrome_options.add_experimental_option("prefs", chrome_preferences)
-
+        
+        # provided path for chromedriver.exe
         chrome_service = Service(executable_path="/opt/chromedriver")
                 
         # Configure the Selenium driver (replace with the appropriate driver for your browser)
@@ -163,10 +164,10 @@ def lambda_handler(event, context):
         )
         export_button.click()
         print("Export Button clicked. Waiting for the form")
-
+        
+        #selecting form elements to send data to the form input fields
         today = datetime.date.today()
         from_date = today - datetime.timedelta(days=1)
-
         from_date_input = WebDriverWait(driver=driver, timeout=30).until(
             expected_conditions.element_to_be_clickable((By.XPATH, '//div[@class="ant-picker-input"]'))
         )
@@ -200,6 +201,7 @@ def lambda_handler(event, context):
         )
         download_button.click()
         print("Download button clicked. Waiting for the file to be downloaded")
+
         seconds = 1
         comeout = True
         while comeout:
@@ -213,20 +215,22 @@ def lambda_handler(event, context):
         print("File is downloaded")
         
         driver.quit()
-        print("driver is closed")
-
-        csv_file = os.path.join(download_path, "report.csv")
+        print("Driver is closed")
         
+        #assigning temp path to csv_file where file is located and readind the csv_file as dict reader
+        csv_file = os.path.join(download_path, "report.csv")
         with open(csv_file, "r", encoding="utf-8-sig") as file:
             csv_reader = csv.DictReader(file)
             print("Reading the data")
             return_data=[]
             for row in csv_reader:
-                fields = ["requested_at", "approved_at", "archived_at", "exchanged_at", "refunded_at"]
-                for field in fields:
+                #taking datetime field value(string format) and converting them into datetime object format to store it into database
+                datetime_fields = ["requested_at", "approved_at", "archived_at", "exchanged_at", "refunded_at"]
+                for field in datetime_fields:
                     field_str = row[field]
                     try:
                         if field_str:
+                            #date = "June 1, 2023 4:08 AM (GMT+05:30) Asia/Calcutta"
                             field_datetime_obj = datetime.datetime.strptime(field_str, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
                             field_datetime = field_datetime_obj.replace(tzinfo=None)
                             row[field] = field_datetime
@@ -234,7 +238,8 @@ def lambda_handler(event, context):
                             row[field] = None
                     except ValueError as e:
                         row[field + "_str"] = field_str 
-
+                
+                #datetype for order_created_at = "2023-05-27T09:08:45.000Z"
                 order_created_at_str = row["order_created_at"]
                 try:
                     if order_created_at_str:
