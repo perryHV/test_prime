@@ -1,7 +1,6 @@
 import tempfile
 import datetime
 import os
-import time
 import csv
 
 
@@ -13,8 +12,6 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions 
-
-
 
 DB_CONF = {
     'host': os.environ['db_host'],
@@ -37,14 +34,11 @@ class BaseModel(Model):
     class Meta:
         database=pg_database
     
-
 class ReturnPrimeBrand(BaseModel):
     brand_name = CharField(null=False)
     url = CharField()
     user_name = CharField()
     password = CharField()
-
-
 
 class ReturnPrimeData(BaseModel):
     serial_number = CharField()
@@ -107,8 +101,6 @@ class ReturnPrimeData(BaseModel):
     refunded_at = DateTimeField(null=True)
     refunded_at_str = CharField(null=True)
 
-
-
 def lambda_handler(event, context):
     print("Started at:", datetime.datetime.now())
     download_path = tempfile.gettempdir()
@@ -129,7 +121,6 @@ def lambda_handler(event, context):
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-dev-tools")
         chrome_options.add_argument("--no-zygote")
-
         chrome_preferences = {"download.default_directory": download_path}
         chrome_options.add_experimental_option("detach", True)
         chrome_options.add_experimental_option("prefs", chrome_preferences)
@@ -151,8 +142,7 @@ def lambda_handler(event, context):
             username_button.send_keys(ch)
 
         password_button = driver.find_element(By.XPATH, '//input[@name="password"]')
-        _password = password
-        for ch in _password:
+        for ch in password:
             password_button.send_keys(ch)
 
         login_button = driver.find_element(By.XPATH, '//button[@class="login-btn"]')
@@ -168,13 +158,9 @@ def lambda_handler(event, context):
         export_button.click()
         print("Export Button clicked. Waiting for the form")
 
-
         today = datetime.date.today()
         # today = datetime.date(2023, 7, 1)
-
-
         from_date = today - datetime.timedelta(days=1)
-
 
         from_date_input = WebDriverWait(driver=driver, timeout=30).until(
             expected_conditions.element_to_be_clickable((By.XPATH, '//div[@class="ant-picker-input"]'))
@@ -189,23 +175,18 @@ def lambda_handler(event, context):
         if today.strftime("%d") == "01":
             driver.find_element(By.XPATH, '//*[@class="ant-picker-header-prev-btn"]').click()
 
-
         driver.find_element(
             By.XPATH, "(//td[@title='" + from_date.strftime("%Y-%m-%d") + "'])[1]"
         ).click()
 
-
         request_type = Select(driver.find_element(By.ID, "PolarisSelect1"))
         request_type.select_by_visible_text("Any")
-
 
         request_status = Select(driver.find_element(By.ID, "PolarisSelect2"))
         request_status.select_by_visible_text("Any")
 
-
         activity_timestamp = Select(driver.find_element(By.ID, "PolarisSelect3"))
         activity_timestamp.select_by_visible_text("Requested at")
-
 
         download_button = WebDriverWait(driver=driver, timeout=30).until(
             expected_conditions.element_to_be_clickable(
@@ -218,7 +199,7 @@ def lambda_handler(event, context):
         comeout = True
         while comeout:
             if os.path.isdir(os.path.join(download_path, "report.csv")):
-                print("file is checked downloaded")
+                print("file is checked and downloaded")
                 break
             else:
                 time.sleep(1)
@@ -231,83 +212,42 @@ def lambda_handler(event, context):
         print("driver is closed")
 
         csv_file = os.path.join(download_path, "report.csv")
+        csv_file="./report.csv"
         with open(csv_file, "r", encoding="utf-8-sig") as file:
             csv_reader = csv.DictReader(file)
             print("Reading the data")
             return_data=[]
             for row in csv_reader:
-                requested_at = row["requested_at"]
-                try:
-                    if requested_at:
-                        requested_at=datetime.datetime.strptime(requested_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                        requested_datetime=requested_at.replace(tzinfo=None)
-                        row["requested_at"]=requested_datetime
-                    else:
-                        row["requested_at"]=None
-                except (ValueError,DataError) as e:
-                    row["requested_at_str"]=requested_at     
+                fields = ["requested_at","approved_at","archived_at","exchanged_at","refunded_at"]
+                for field in fields:
+                    field_str = row[field]
+                    try:
+                        if field_str:
+                            field_datetime_obj = datetime.datetime.strptime(field_str, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                            field_datetime = field_datetime_obj.replace(tzinfo=None)
+                            row[field] = field_datetime
+                        else:
+                            row[field] = None
+                    except ValueError as e:
+                        field = field + "_str"
+                        row[field] = field_str 
 
-                order_created_at = row["order_created_at"]
+                order_created_at_str = row["order_created_at"]
                 try:
-                    if(order_created_at!=""):
-                        order_created_at=datetime.datetime.strptime(order_created_at, "%Y-%m-%dT%H:%M:%S.%fZ")
-                        order_created_at_datetime=order_created_at.replace(tzinfo=None)
-                        row["order_created_at"]=order_created_at_datetime
+                    if order_created_at_str:
+                        order_created_at_datetime_obj = datetime.datetime.strptime(order_created_at_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                        order_created_at_datetime = order_created_at_datetime_obj.replace(tzinfo=None)
+                        row["order_created_at"] = order_created_at_datetime
                     else:
-                        row["order_created_at"]=None
-                except (ValueError,DataError) as e:
-                    row["order_created_at_str"]=order_created_at
+                        row["order_created_at"] = None
+                except ValueError as e:
+                    row["order_created_at_str"] = order_created_at_str
 
-                approved_at = row["approved_at"]
-                try:
-                    if(approved_at!=""):
-                        approved_at=datetime.datetime.strptime(approved_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                        approved_at_datetime=approved_at.replace(tzinfo=None)
-                        row["approved_at"]=approved_at_datetime
-                    else:
-                        row["approved_at"]=None
-                except (ValueError,DataError) as e:
-                    row["approved_at_str"]=approved_at        
-
-                archived_at=row["archived_at"]
-                try:
-                    if archived_at!="":
-                        archived_at=datetime.datetime.strptime(archived_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                        archived_at_datetime=archived_at.replace(tzinfo=None)
-                        row["archived_at"]=archived_at_datetime
-                    else:
-                        row["archived_at"]=None 
-                except (ValueError,DataError) as e:
-                    row["archived_at_str"]=archived_at
-
-                exchanged_at = row["exchanged_at"] 
-                try:
-                    if(exchanged_at!="") :
-                        exchanged_at=datetime.datetime.strptime(exchanged_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                        exchanged_at_datetime=exchanged_at.replace(tzinfo=None)
-                        row["exchanged_at"]=exchanged_at_datetime
-                    else:
-                        row["exchanged_at"] =None    
-                except (ValueError,DataError) as e:
-                    row["exchanged_at_str"]=exchanged_at
-
-                refunded_at = row["refunded_at"]
-                try:
-                    if(refunded_at!=""):
-                        refunded_at=datetime.datetime.strptime(refunded_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                        refunded_at_datetime=refunded_at.replace(tzinfo=None)
-                        row["refunded_at"]=refunded_at_datetime
-                    else:
-                        row["refunded_at"]=None    
-                except (ValueError,DataError) as e:
-                    row["refunded_at_str"]=refunded_at
-
-                row["brand"]=brand.id
+                row["brand"] = brand.id
                 return_data.append(row)
                 
-               
             ReturnPrimeData.insert_many(return_data).execute()
-        print("program is completed and Data has been pushed to database")
+        print("Data has been pushed to database")
         print("Ended at:", datetime.datetime.now())
            
 
