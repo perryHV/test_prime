@@ -165,7 +165,6 @@ def lambda_handler(event, context):
         print("Export Button clicked. Waiting for the form")
 
         today = datetime.date.today()
-        # today = datetime.date(2023, 7, 1)
         from_date = today - datetime.timedelta(days=1)
 
         from_date_input = WebDriverWait(driver=driver, timeout=30).until(
@@ -205,7 +204,6 @@ def lambda_handler(event, context):
         comeout = True
         while comeout:
             if os.path.isfile(os.path.join(download_path, "report.csv")):
-                print("file is checked and downloaded")
                 break
             else:
                 time.sleep(1)
@@ -224,7 +222,7 @@ def lambda_handler(event, context):
             print("Reading the data")
             return_data=[]
             for row in csv_reader:
-                fields = ["requested_at" , "approved_at" , "archived_at" , "exchanged_at" , "refunded_at"]
+                fields = ["requested_at", "approved_at", "archived_at", "exchanged_at", "refunded_at"]
                 for field in fields:
                     field_str = row[field]
                     try:
