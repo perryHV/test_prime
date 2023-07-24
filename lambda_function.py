@@ -5,7 +5,7 @@ import time
 import csv
 
 
-from peewee import  PostgresqlDatabase, Model, CharField, ForeignKeyField, DateTimeField,TextField, DecimalField, IntegerField , DataError
+from peewee import  PostgresqlDatabase, Model, CharField, ForeignKeyField, DateTimeField,TextField, DecimalField, IntegerField 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -107,6 +107,7 @@ class ReturnPrimeData(BaseModel):
     refunded_at_str = CharField(null=True)
 
 
+
 def lambda_handler(event, context):
     print("Started at:", datetime.datetime.now())
     download_path = tempfile.gettempdir()
@@ -144,6 +145,7 @@ def lambda_handler(event, context):
         username_button = WebDriverWait(driver=driver, timeout=30).until(
             expected_conditions.element_to_be_clickable((By.XPATH, '//input[@name="email"]'))
         )
+        # sending username and password to log-in to dashboard
         email = user_name
         for ch in email:
             username_button.send_keys(ch)
@@ -165,7 +167,7 @@ def lambda_handler(event, context):
         export_button.click()
         print("Export Button clicked. Waiting for the form")
         
-        #selecting form elements to send data to the form input fields
+        # selecting form elements to send data to the form input fields
         today = datetime.date.today()
         from_date = today - datetime.timedelta(days=1)
         from_date_input = WebDriverWait(driver=driver, timeout=30).until(
@@ -217,20 +219,20 @@ def lambda_handler(event, context):
         driver.quit()
         print("Driver is closed")
         
-        #assigning temp path to csv_file where file is located and readind the csv_file as dict reader
+        # assigning temp path to csv_file where file is located and readind the csv_file as dict reader
         csv_file = os.path.join(download_path, "report.csv")
         with open(csv_file, "r", encoding="utf-8-sig") as file:
             csv_reader = csv.DictReader(file)
             print("Reading the data")
             return_data=[]
             for row in csv_reader:
-                #taking datetime field value(string format) and converting them into datetime object format to store it into database
+                # taking datetime field value(string format) and converting them into datetime object format to store it into database
                 datetime_fields = ["requested_at", "approved_at", "archived_at", "exchanged_at", "refunded_at"]
                 for field in datetime_fields:
                     field_str = row[field]
                     try:
                         if field_str:
-                            #date = "June 1, 2023 4:08 AM (GMT+05:30) Asia/Calcutta"
+                            # date = "June 1, 2023 4:08 AM (GMT+05:30) Asia/Calcutta"
                             field_datetime_obj = datetime.datetime.strptime(field_str, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
                             field_datetime = field_datetime_obj.replace(tzinfo=None)
                             row[field] = field_datetime
@@ -239,7 +241,7 @@ def lambda_handler(event, context):
                     except ValueError as e:
                         row[field + "_str"] = field_str 
                 
-                #datetype for order_created_at = "2023-05-27T09:08:45.000Z"
+                # datetype for order_created_at = "2023-05-27T09:08:45.000Z"
                 order_created_at_str = row["order_created_at"]
                 try:
                     if order_created_at_str:
@@ -258,8 +260,3 @@ def lambda_handler(event, context):
         print("Data has been pushed to database")
         print("Ended at:", datetime.datetime.now())
            
-
-
-
-
-
