@@ -14,6 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions 
 
+
 DB_CONF = {
     'host': os.environ['db_host'],
     'name': os.environ['db_name'],
@@ -31,15 +32,18 @@ pg_database = PostgresqlDatabase(
     port=DB_CONF["port"],
 )
 
+
 class BaseModel(Model):
     class Meta:
         database=pg_database
     
+
 class ReturnPrimeBrand(BaseModel):
     brand_name = CharField(null=False)
     url = CharField()
     user_name = CharField()
     password = CharField()
+
 
 class ReturnPrimeData(BaseModel):
     serial_number = CharField()
@@ -101,6 +105,7 @@ class ReturnPrimeData(BaseModel):
     exchanged_at_str = CharField(null=True)
     refunded_at = DateTimeField(null=True)
     refunded_at_str = CharField(null=True)
+
 
 def lambda_handler(event, context):
     print("Started at:", datetime.datetime.now())
@@ -199,7 +204,7 @@ def lambda_handler(event, context):
         seconds = 1
         comeout = True
         while comeout:
-            if os.path.isdir(os.path.join(download_path, "report.csv")):
+            if os.path.isfile(os.path.join(download_path, "report.csv")):
                 print("file is checked and downloaded")
                 break
             else:
@@ -207,7 +212,7 @@ def lambda_handler(event, context):
                 seconds = seconds + 1
                 if seconds > 120:
                     comeout = False
-        print("File is download")
+        print("File is downloaded")
         
         driver.quit()
         print("driver is closed")
@@ -219,7 +224,7 @@ def lambda_handler(event, context):
             print("Reading the data")
             return_data=[]
             for row in csv_reader:
-                fields = ["requested_at","approved_at","archived_at","exchanged_at","refunded_at"]
+                fields = ["requested_at" , "approved_at" , "archived_at" , "exchanged_at" , "refunded_at"]
                 for field in fields:
                     field_str = row[field]
                     try:
@@ -230,8 +235,7 @@ def lambda_handler(event, context):
                         else:
                             row[field] = None
                     except ValueError as e:
-                        field = field + "_str"
-                        row[field] = field_str 
+                        row[field + "_str"] = field_str 
 
                 order_created_at_str = row["order_created_at"]
                 try:
