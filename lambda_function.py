@@ -4,7 +4,6 @@ import os
 import time
 import csv
 
-
 from peewee import  PostgresqlDatabase, Model, CharField, ForeignKeyField, DateTimeField,TextField, DecimalField, IntegerField 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -23,7 +22,6 @@ DB_CONF = {
     'port': os.environ['db_port']
 }
 
-
 pg_database = PostgresqlDatabase(
     DB_CONF["name"],
     user=DB_CONF["user"],
@@ -36,6 +34,7 @@ pg_database = PostgresqlDatabase(
 class BaseModel(Model):
     class Meta:
         database=pg_database
+
     
 # Defined table schema 
 class ReturnPrimeBrand(BaseModel):
@@ -259,4 +258,3 @@ def lambda_handler(event, context):
             ReturnPrimeData.insert_many(return_data).execute()
         print("Data has been pushed to database")
         print("Ended at:", datetime.datetime.now())
-           
