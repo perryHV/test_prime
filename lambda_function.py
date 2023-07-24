@@ -198,8 +198,13 @@ def lambda_handler(event, context):
         seconds = 1
         comeout = True
         while comeout:
+<<<<<<< HEAD
             if os.path.isdir(os.path.join(download_path, "report.csv")):
                 print("file is checked and downloaded")
+=======
+            if os.path.isdir(os.path.join(download_path, "report")):
+                print("file is checked downloaded")
+>>>>>>> cf4df94b7d37853825111c93590a36fb636c7c7f
                 break
             else:
                 time.sleep(1)
@@ -211,13 +216,18 @@ def lambda_handler(event, context):
         driver.quit()
         print("driver is closed")
 
+<<<<<<< HEAD
         csv_file = os.path.join(download_path, "report.csv")
-        csv_file="./report.csv"
+        
+=======
+        csv_file = os.path.join(download_path, "report")
+>>>>>>> cf4df94b7d37853825111c93590a36fb636c7c7f
         with open(csv_file, "r", encoding="utf-8-sig") as file:
             csv_reader = csv.DictReader(file)
             print("Reading the data")
             return_data=[]
             for row in csv_reader:
+<<<<<<< HEAD
                 fields = ["requested_at","approved_at","archived_at","exchanged_at","refunded_at"]
                 for field in fields:
                     field_str = row[field]
@@ -231,6 +241,18 @@ def lambda_handler(event, context):
                     except ValueError as e:
                         field = field + "_str"
                         row[field] = field_str 
+=======
+                requested_at = row["requested_at"]
+                try:
+                    if requested_at:
+                        requested_at=datetime.datetime.strptime(requested_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        requested_datetime=requested_at.replace(tzinfo=None)
+                        row["requested_at"]=requested_datetime
+                    else:
+                        row["requested_at"]=None
+                except (ValueError,DataError) as e:
+                    row["requested_at_str"]=row["requested_at"]  
+>>>>>>> cf4df94b7d37853825111c93590a36fb636c7c7f
 
                 order_created_at_str = row["order_created_at"]
                 try:
@@ -239,11 +261,63 @@ def lambda_handler(event, context):
                         order_created_at_datetime = order_created_at_datetime_obj.replace(tzinfo=None)
                         row["order_created_at"] = order_created_at_datetime
                     else:
+<<<<<<< HEAD
                         row["order_created_at"] = None
                 except ValueError as e:
                     row["order_created_at_str"] = order_created_at_str
 
                 row["brand"] = brand.id
+=======
+                        row["order_created_at"]=None
+                except (ValueError,DataError) as e:
+                    row["order_created_at_str"]=row["order_created_at"]
+
+                approved_at = row["approved_at"]
+                try:
+                    if(approved_at!=""):
+                        approved_at=datetime.datetime.strptime(approved_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        approved_at_datetime=approved_at.replace(tzinfo=None)
+                        row["approved_at"]=approved_at_datetime
+                    else:
+                        row["approved_at"]=None
+                except (ValueError,DataError) as e:
+                    row["approved_at_str"]=row["approved_at"]        
+
+                archived_at=row["archived_at"]
+                try:
+                    if archived_at!="":
+                        archived_at=datetime.datetime.strptime(archived_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        archived_at_datetime=archived_at.replace(tzinfo=None)
+                        row["archived_at"]=archived_at_datetime
+                    else:
+                        row["archived_at"]=None 
+                except (ValueError,DataError) as e:
+                    row["archived_at_str"]=row["archived_at"]
+
+                exchanged_at = row["exchanged_at"] 
+                try:
+                    if(exchanged_at!="") :
+                        exchanged_at=datetime.datetime.strptime(exchanged_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        exchanged_at_datetime=exchanged_at.replace(tzinfo=None)
+                        row["exchanged_at"]=exchanged_at_datetime
+                    else:
+                        row["exchanged_at"] =None    
+                except (ValueError,DataError) as e:
+                    row["exchanged_at_str"]=row["exchanged_at"]
+
+                refunded_at = row["refunded_at"]
+                try:
+                    if(refunded_at!=""):
+                        refunded_at=datetime.datetime.strptime(refunded_at, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
+                        refunded_at_datetime=refunded_at.replace(tzinfo=None)
+                        row["refunded_at"]=refunded_at_datetime
+                    else:
+                        row["refunded_at"]=None    
+                except (ValueError,DataError) as e:
+                    row["refunded_at_str"]=row["refunded_at"]
+
+                row["brand"]=brand.id
+>>>>>>> cf4df94b7d37853825111c93590a36fb636c7c7f
                 return_data.append(row)
                 
             ReturnPrimeData.insert_many(return_data).execute()
