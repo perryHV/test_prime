@@ -3,6 +3,8 @@ import datetime
 import os
 import time
 import csv
+import socket
+import urllib.request
 
 from peewee import  PostgresqlDatabase, Model, CharField, ForeignKeyField, DateTimeField,TextField, DecimalField, IntegerField 
 from selenium import webdriver
@@ -12,6 +14,8 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions 
+from selenium.common.exceptions import ElementClickInterceptedException
+
 
 
 DB_CONF = {
@@ -29,6 +33,9 @@ pg_database = PostgresqlDatabase(
     host=DB_CONF["host"],
     port=DB_CONF["port"],
 )
+
+HEALTHCHECKS_END_URL = os.environ['healthchecks_url']
+HEALTHCHECKS_START_URL = HEALTHCHECKS_END_URL + "/start"
 
 
 class BaseModel(Model):
@@ -109,10 +116,17 @@ class ReturnPrimeData(BaseModel):
 
 def lambda_handler(event, context):
     print("Started at:", datetime.datetime.now())
-    download_path = tempfile.gettempdir()
+    try:
+        urllib.request.urlopen(HEALTHCHECKS_START_URL, timeout=10)
+    except socket.error as e:
+        # Log ping failure here...
+        print("Healthcheck ping failed: %s" % e)
 
+    download_path = tempfile.gettempdir()
     print("Temp path:", download_path)
+
     all_brands= ReturnPrimeBrand.select()
+
     for brand in all_brands:
         url = brand.url
         user_name = brand.user_name
@@ -156,8 +170,20 @@ def lambda_handler(event, context):
         login_button = driver.find_element(By.XPATH, '//button[@class="login-btn"]')
 
         login_button.click()
-        print("Logged in. Waiting for export button")
-
+        print("Logged in. Looking for modal")
+        
+        try:
+            close_button = WebDriverWait(driver=driver,timeout=20).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH,'//button[@class="Polaris-Modal-CloseButton"]')
+                )
+            )
+            close_button.click()
+            print("Close button clicked.")
+        except ElementClickInterceptedException as e:
+            print("Modal doesn't exist")    
+        
+        print("Waiting for export button")
         export_button = WebDriverWait(driver=driver, timeout=60).until(
             expected_conditions.element_to_be_clickable(
                 (By.XPATH, '(//span[@class="sidebar__nav-link-text"])[5]')
@@ -258,3 +284,10 @@ def lambda_handler(event, context):
             ReturnPrimeData.insert_many(return_data).execute()
         print("Data has been pushed to database")
         print("Ended at:", datetime.datetime.now())
+
+        try:
+           urllib.request.urlopen(HEALTHCHECKS_END_URL, timeout=10)
+        except socket.error as e:
+           # Log ping failure here...
+           print("Healthcheck ping failed: %s" % e)
+           
