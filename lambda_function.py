@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions 
+from selenium.common.exceptions import ElementClickInterceptedException
 
 
 DB_CONF = {
@@ -156,7 +157,7 @@ def lambda_handler(event, context):
         login_button = driver.find_element(By.XPATH, '//button[@class="login-btn"]')
 
         login_button.click()
-        print("Logged in. Waiting for export button")
+        print("Logged in. Looking for modal")
         
         try:
             close_button = WebDriverWait(driver=driver,timeout=20).until(
@@ -165,10 +166,11 @@ def lambda_handler(event, context):
                 )
             )
             close_button.click()
-            print("Close button clicked. Waiting for export button")
-        except Exception:
-            print("Close Button not found. All okk")    
-
+            print("Close button clicked.")
+        except ElementClickInterceptedException as e:
+            print("Modal doesn't exist")    
+        
+        print("Waiting for export button")
         export_button = WebDriverWait(driver=driver, timeout=60).until(
             expected_conditions.element_to_be_clickable(
                 (By.XPATH, '(//span[@class="sidebar__nav-link-text"])[5]')
