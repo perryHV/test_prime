@@ -195,16 +195,24 @@ def lambda_handler(event, context):
         # selecting form elements to send data to the form input fields
         today = datetime.date.today()
         from_date = today - datetime.timedelta(days=1)
+        end_date=from_date
+        
+        if event.get('from_date'):
+            from_date=event.get('from_date')
+
+        if event.get('end_date'):
+            end_date=event.get('end_date')
+
         from_date_input = WebDriverWait(driver=driver, timeout=30).until(
             expected_conditions.element_to_be_clickable((By.XPATH, '//div[@class="ant-picker-input"]'))
         )
         from_date_input.click()
-        end_date = WebDriverWait(driver=driver, timeout=10).until(
+        end_date_input = WebDriverWait(driver=driver, timeout=10).until(
             expected_conditions.element_to_be_clickable(
-                (By.XPATH, "(//td[@title='" + from_date.strftime("%Y-%m-%d") + "'])[1]")
+                (By.XPATH, "(//td[@title='" + end_date.strftime("%Y-%m-%d") + "'])[1]")
             )
         )
-        end_date.click()
+        end_date_input.click()
         if today.strftime("%d") == "01":
             driver.find_element(By.XPATH, '//*[@class="ant-picker-header-prev-btn"]').click()
 
