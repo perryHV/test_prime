@@ -17,7 +17,6 @@ from selenium.webdriver.support import expected_conditions
 from selenium.common.exceptions import ElementClickInterceptedException, TimeoutException
 
 
-
 DB_CONF = {
     'host': os.environ['db_host'],
     'name': os.environ['db_name'],
@@ -113,7 +112,6 @@ class ReturnPrimeData(BaseModel):
     refunded_at_str = CharField(null=True)
 
 
-
 def lambda_handler(event, context):
     print("Started at:", datetime.datetime.now())
     try:
@@ -149,7 +147,8 @@ def lambda_handler(event, context):
         chrome_service = Service(executable_path="/opt/chromedriver")
 
         # Configure the Selenium driver (replace with the appropriate driver for your browser)
-        driver = webdriver.Chrome(options=chrome_options, service=chrome_service)
+        driver = webdriver.Chrome(
+            options=chrome_options, service=chrome_service)
         driver.get(url=url)
         WebDriverWait(driver=driver, timeout=3)
 
@@ -185,6 +184,7 @@ def lambda_handler(event, context):
             export_button.click()
             print("Export Button clicked. Waiting for the form")
         except (ElementClickInterceptedException, TimeoutException):
+            print("Not able to click export button. Clicking on modal")
             close_button = WebDriverWait(driver=driver, timeout=20).until(
                 expected_conditions.element_to_be_clickable(
                     (By.XPATH, '//button[@class="Polaris-Modal-CloseButton"]')
