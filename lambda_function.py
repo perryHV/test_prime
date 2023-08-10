@@ -5,17 +5,18 @@ import time
 import csv
 import socket
 import urllib.request
+import re
+from datetime import timedelta
 
-from peewee import  PostgresqlDatabase, Model, CharField, ForeignKeyField, DateTimeField,TextField, DecimalField, IntegerField 
+from peewee import PostgresqlDatabase, Model, CharField, ForeignKeyField, DateTimeField, TextField, DecimalField, IntegerField, DataError
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support import expected_conditions 
-from selenium.common.exceptions import ElementClickInterceptedException
-
+from selenium.webdriver.support import expected_conditions
+from selenium.common.exceptions import ElementClickInterceptedException, TimeoutException, NoSuchElementException
 
 
 DB_CONF = {
@@ -40,10 +41,10 @@ HEALTHCHECKS_START_URL = HEALTHCHECKS_END_URL + "/start"
 
 class BaseModel(Model):
     class Meta:
-        database=pg_database
+        database = pg_database
 
-    
-# Defined table schema 
+
+# Defined table schema
 class ReturnPrimeBrand(BaseModel):
     brand_name = CharField(null=False)
     url = CharField()
@@ -75,17 +76,17 @@ class ReturnPrimeData(BaseModel):
     item_price = DecimalField(null=True)
     sku = CharField(null=True)
     reason = CharField(null=True)
-    requested_at= DateTimeField(null=True)
-    requested_at_str= CharField(null=True)
+    requested_at = DateTimeField(null=True)
+    requested_at_str = CharField(null=True)
     order_created_at = DateTimeField(null=True)
     order_created_at_str = CharField(null=True)
-    approved_at= DateTimeField(null=True)
-    approved_at_str= CharField(null=True)
+    approved_at = DateTimeField(null=True)
+    approved_at_str = CharField(null=True)
     received_at = CharField(null=True)
     customer_comment = TextField(null=True)
     pickup_awb = CharField(null=True)
     pickup_logistics = CharField(null=True)
-    warehouse_location = CharField() 
+    warehouse_location = CharField()
     exchange_order_status = CharField(null=True)
     refund_status = CharField(null=True)
     requested_refund_mode = CharField(null=True)
@@ -102,16 +103,15 @@ class ReturnPrimeData(BaseModel):
     original_return_method = CharField(null=True)
     actual_return_method = CharField(null=True)
     custom_attributes = CharField(null=True)
-    inspected_at= CharField(null=True)
-    archived_at= DateTimeField(null=True)
-    archived_at_str= CharField(null=True)
+    inspected_at = CharField(null=True)
+    archived_at = DateTimeField(null=True)
+    archived_at_str = CharField(null=True)
     payment_transaction_date = CharField(null=True)
     inspection_due_by = CharField(null=True)
     exchanged_at = DateTimeField(null=True)
     exchanged_at_str = CharField(null=True)
     refunded_at = DateTimeField(null=True)
     refunded_at_str = CharField(null=True)
-
 
 
 def lambda_handler(event, context):
@@ -125,7 +125,7 @@ def lambda_handler(event, context):
     download_path = tempfile.gettempdir()
     print("Temp path:", download_path)
 
-    all_brands= ReturnPrimeBrand.select()
+    all_brands = ReturnPrimeBrand.select()
 
     for brand in all_brands:
         url = brand.url
@@ -144,80 +144,98 @@ def lambda_handler(event, context):
         chrome_preferences = {"download.default_directory": download_path}
         chrome_options.add_experimental_option("detach", True)
         chrome_options.add_experimental_option("prefs", chrome_preferences)
-        
+
         # provided path for chromedriver.exe
         chrome_service = Service(executable_path="/opt/chromedriver")
-                
+
         # Configure the Selenium driver (replace with the appropriate driver for your browser)
-        driver = webdriver.Chrome(options=chrome_options, service=chrome_service)
+        driver = webdriver.Chrome(
+            options=chrome_options, service=chrome_service)
         driver.get(url=url)
         WebDriverWait(driver=driver, timeout=3)
 
         print("Driver is running")
 
         username_button = WebDriverWait(driver=driver, timeout=30).until(
-            expected_conditions.element_to_be_clickable((By.XPATH, '//input[@name="email"]'))
+            expected_conditions.element_to_be_clickable(
+                (By.XPATH, '//input[@name="email"]'))
         )
         # sending username and password to log-in to dashboard
         email = user_name
         for ch in email:
             username_button.send_keys(ch)
 
-        password_button = driver.find_element(By.XPATH, '//input[@name="password"]')
+        password_button = driver.find_element(
+            By.XPATH, '//input[@name="password"]')
         for ch in password:
             password_button.send_keys(ch)
 
-        login_button = driver.find_element(By.XPATH, '//button[@class="login-btn"]')
+        login_button = driver.find_element(
+            By.XPATH, '//button[@class="login-btn"]')
 
         login_button.click()
-        print("Logged in. Looking for modal")
-        
+        print("Logged in.")
+
+        time.sleep(20)
+        print("Waiting for export button")
         try:
-            close_button = WebDriverWait(driver=driver,timeout=20).until(
+            export_button = WebDriverWait(driver=driver, timeout=60).until(
                 expected_conditions.element_to_be_clickable(
-                    (By.XPATH,'//button[@class="Polaris-Modal-CloseButton"]')
+                    (By.XPATH, '(//span[@class="sidebar__nav-link-text"])[5]')
+                )
+            )
+            export_button.click()
+            print("Export Button clicked. Waiting for the form")
+        except (ElementClickInterceptedException, TimeoutException):
+            print("Not able to click export button. Clicking on modal")
+            close_button = WebDriverWait(driver=driver, timeout=20).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, '//button[@class="Polaris-Modal-CloseButton"]')
                 )
             )
             close_button.click()
             print("Close button clicked.")
-        except ElementClickInterceptedException as e:
-            print("Modal doesn't exist")    
-        
-        print("Waiting for export button")
-        export_button = WebDriverWait(driver=driver, timeout=60).until(
-            expected_conditions.element_to_be_clickable(
-                (By.XPATH, '(//span[@class="sidebar__nav-link-text"])[5]')
+
+            export_button = WebDriverWait(driver=driver, timeout=60).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, '(//span[@class="sidebar__nav-link-text"])[5]')
+                )
             )
-        )
-        export_button.click()
-        print("Export Button clicked. Waiting for the form")
-        
+            export_button.click()
+            print("Export Button clicked. Waiting for the form")
+
         # selecting form elements to send data to the form input fields
         today = datetime.date.today()
         from_date = today - datetime.timedelta(days=1)
-        end_date=from_date
-        
+        end_date = from_date
+
         if event.get('from_date'):
-            from_date=event.get('from_date')
+            from_date_str = event.get('from_date')
+            from_date = datetime.datetime.strptime(from_date_str, "%Y-%m-%d")
 
         if event.get('end_date'):
-            end_date=event.get('end_date')
+            end_date_str = event.get('end_date')
+            end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d")
 
         from_date_input = WebDriverWait(driver=driver, timeout=30).until(
-            expected_conditions.element_to_be_clickable((By.XPATH, '//div[@class="ant-picker-input"]'))
+            expected_conditions.element_to_be_clickable(
+                (By.XPATH, '//div[@class="ant-picker-input"]'))
         )
         from_date_input.click()
-        end_date_input = WebDriverWait(driver=driver, timeout=10).until(
+        end_date_input = WebDriverWait(driver=driver, timeout=30).until(
             expected_conditions.element_to_be_clickable(
-                (By.XPATH, "(//td[@title='" + end_date.strftime("%Y-%m-%d") + "'])[1]")
+                (By.XPATH,
+                 "(//td[@title='" + end_date.strftime("%Y-%m-%d") + "'])[1]")
             )
         )
         end_date_input.click()
         if today.strftime("%d") == "01":
-            driver.find_element(By.XPATH, '//*[@class="ant-picker-header-prev-btn"]').click()
+            driver.find_element(
+                By.XPATH, '//*[@class="ant-picker-header-prev-btn"]').click()
 
         driver.find_element(
-            By.XPATH, "(//td[@title='" + from_date.strftime("%Y-%m-%d") + "'])[1]"
+            By.XPATH, "(//td[@title='" +
+            from_date.strftime("%Y-%m-%d") + "'])[1]"
         ).click()
 
         request_type = Select(driver.find_element(By.ID, "PolarisSelect1"))
@@ -225,13 +243,17 @@ def lambda_handler(event, context):
 
         request_status = Select(driver.find_element(By.ID, "PolarisSelect2"))
         request_status.select_by_visible_text("Any")
-
-        activity_timestamp = Select(driver.find_element(By.ID, "PolarisSelect3"))
-        activity_timestamp.select_by_visible_text("Requested at")
+        try:
+            activity_timestamp = Select(
+                driver.find_element(By.ID, "PolarisSelect3"))
+            activity_timestamp.select_by_visible_text("Requested at")
+        except NoSuchElementException:
+            print("Activity timestamp elemnt not found") 
 
         download_button = WebDriverWait(driver=driver, timeout=30).until(
             expected_conditions.element_to_be_clickable(
-                (By.XPATH, '//button[@class="Polaris-Button Polaris-Button--primary"]')
+                (By.XPATH,
+                 '//button[@class="Polaris-Button Polaris-Button--primary"]')
             )
         )
         download_button.click()
@@ -248,54 +270,78 @@ def lambda_handler(event, context):
                 if seconds > 120:
                     comeout = False
         print("File is downloaded")
-        
+
         driver.quit()
         print("Driver is closed")
-        
+
         # assigning temp path to csv_file where file is located and readind the csv_file as dict reader
         csv_file = os.path.join(download_path, "report.csv")
         with open(csv_file, "r", encoding="utf-8-sig") as file:
             csv_reader = csv.DictReader(file)
             print("Reading the data")
-            return_data=[]
+            return_data = []
             for row in csv_reader:
                 # taking datetime field value(string format) and converting them into datetime object format to store it into database
-                datetime_fields = ["requested_at", "approved_at", "archived_at", "exchanged_at", "refunded_at"]
+                datetime_fields = ["requested_at", "approved_at",
+                                   "archived_at", "exchanged_at", "refunded_at"]
                 for field in datetime_fields:
                     field_str = row[field]
                     try:
                         if field_str:
                             # date = "June 1, 2023 4:08 AM (GMT+05:30) Asia/Calcutta"
-                            field_datetime_obj = datetime.datetime.strptime(field_str, "%B %d, %Y %I:%M %p (GMT%z) Asia/Calcutta")
-                            field_datetime = field_datetime_obj.replace(tzinfo=None)
+                            #input_timestamp_str = "Tue August 8th 2023, 9:50:35 (GMT+05:30) Asia/Calcutta"
+                            format_str = "%B %d %Y, %H:%M:%S"
+
+                            # Define a regular expression pattern to match the timestamp components
+                            pattern = r"(\w+) (\w+) (\d+)(?:st|nd|rd|th)? (\d{4}), (\d{1,2}):(\d{2}):(\d{2}) \(GMT([+-]\d{2}):(\d{2})\) (.+)"
+
+                            match = re.match(pattern, field_str)
+                            if match:
+                                groups = match.groups()
+                                
+                                day_name, month_name, day, year, hour, minute, second, tz_hours, tz_minutes, _ = groups
+                                
+                                month_num = datetime.datetime.strptime(month_name, "%B").month  
+                                tz_offset = timedelta(hours=int(tz_hours), minutes=int(tz_minutes))
+                                
+                                parsed_datetime = datetime.datetime(
+                                    year=int(year),
+                                    month=int(month_num),
+                                    day=int(day),
+                                    hour=int(hour),
+                                    minute=int(minute),
+                                    second=int(second),
+                                ) 
+                            field_datetime = parsed_datetime.strftime(format_str)
                             row[field] = field_datetime
                         else:
                             row[field] = None
-                    except ValueError as e:
-                        row[field + "_str"] = field_str 
-                
+                    except (ValueError,DataError) as e:
+                        row[field + "_str"] = field_str
+
                 # datetype for order_created_at = "2023-05-27T09:08:45.000Z"
                 order_created_at_str = row["order_created_at"]
                 try:
                     if order_created_at_str:
-                        order_created_at_datetime_obj = datetime.datetime.strptime(order_created_at_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-                        order_created_at_datetime = order_created_at_datetime_obj.replace(tzinfo=None)
+                        order_created_at_datetime_obj = datetime.datetime.strptime(
+                            order_created_at_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                        order_created_at_datetime = order_created_at_datetime_obj.replace(
+                            tzinfo=None)
                         row["order_created_at"] = order_created_at_datetime
                     else:
                         row["order_created_at"] = None
-                except ValueError as e:
+                except (ValueError,DataError) as e:
                     row["order_created_at_str"] = order_created_at_str
 
                 row["brand"] = brand.id
                 return_data.append(row)
-                
+
             ReturnPrimeData.insert_many(return_data).execute()
         print("Data has been pushed to database")
         print("Ended at:", datetime.datetime.now())
 
         try:
-           urllib.request.urlopen(HEALTHCHECKS_END_URL, timeout=10)
+            urllib.request.urlopen(HEALTHCHECKS_END_URL, timeout=10)
         except socket.error as e:
-           # Log ping failure here...
-           print("Healthcheck ping failed: %s" % e)
-           
+            # Log ping failure here...
+            print("Healthcheck ping failed: %s" % e)
