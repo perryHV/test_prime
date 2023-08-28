@@ -52,7 +52,7 @@ class ReturnPrimeBrand(BaseModel):
     password = CharField()
 
 
-class ReturnPrimeData(BaseModel):
+class tempData(BaseModel):
     serial_number = CharField()
     brand = ForeignKeyField(ReturnPrimeBrand)
     type = CharField()
@@ -151,10 +151,18 @@ def lambda_handler(event, context):
         # Configure the Selenium driver (replace with the appropriate driver for your browser)
         driver = webdriver.Chrome(
             options=chrome_options, service=chrome_service)
-        driver.get(url=url)
+        driver.get(url="https://apps.returnprime.com/user/login")
         WebDriverWait(driver=driver, timeout=3)
 
         print("Driver is running")
+
+        store_url_button=WebDriverWait(driver=driver,timeout=30).until(
+            expected_conditions.element_to_be_clickable(
+            (By.XPATH,'//input[@name="store"]'))
+        )
+        store_url=url
+        for ch in store_url:
+            store_url_button.send_keys(ch)
 
         username_button = WebDriverWait(driver=driver, timeout=30).until(
             expected_conditions.element_to_be_clickable(
@@ -336,7 +344,7 @@ def lambda_handler(event, context):
                 row["brand"] = brand.id
                 return_data.append(row)
 
-            ReturnPrimeData.insert_many(return_data).execute()
+            tempData.insert_many(return_data).execute()
         print("Data has been pushed to database")
         print("Ended at:", datetime.datetime.now())
 
